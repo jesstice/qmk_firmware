@@ -1,14 +1,34 @@
 #include QMK_KEYBOARD_H
+#include <stdio.h>
 
 #ifdef PROTOCOL_LUFA
   #include "lufa.h"
   #include "split_util.h"
 #endif
-#ifdef SSD1306OLED
-  #include "ssd1306.h"
-#endif
 
 extern uint8_t is_master;
+
+// OLED setup
+#define IDLE_FRAMES 5
+#define IDLE_SPEED 30
+#define TAP_FRAMES 2
+#define TAP_SPEED 40
+#define ANIM_FRAME_DURATION 200
+#define ANIM_SIZE 512
+
+bool gui_on = true;
+char wpm_str[10];
+uint32_t anim_timer = 0;
+uint32_t anim_sleep = 0;
+uint8_t current_idle_frame = 0;
+uint8_t current_tap_frame = 0;
+
+// Uncomment for oled-right
+// static long int oled_timeout = 600000; // 10 minutes
+
+// To manage fireware size, create one side at a time
+#include "oled-left.c"
+// #include "oled-right.c"
 
 enum layer_number {
   _QWERTY = 0,
@@ -116,41 +136,12 @@ void update_tri_layer_RGB(uint8_t layer1, uint8_t layer2, uint8_t layer3) {
   }
 }
 
-//SSD1306 OLED update loop, make sure to enable OLED_DRIVER_ENABLE=yes in rules.mk
-#ifdef OLED_DRIVER_ENABLE
-
-oled_rotation_t oled_init_user(oled_rotation_t rotation) {
-  if (!is_keyboard_master())
-    return OLED_ROTATION_180;  // flips the display 180 degrees if offhand
-  return rotation;
-}
-
 // When you add source files to SRC in rules.mk, you can use functions.
 const char *read_layer_state(void);
 const char *read_logo(void);
 void set_keylog(uint16_t keycode, keyrecord_t *record);
 const char *read_keylog(void);
 const char *read_keylogs(void);
-
-// const char *read_mode_icon(bool swap);
-// const char *read_host_led_state(void);
-// void set_timelog(void);
-// const char *read_timelog(void);
-
-void oled_task_user(void) {
-  if (is_keyboard_master()) {
-    // If you want to change the display of OLED, you need to change here
-    oled_write_ln(read_layer_state(), false);
-    oled_write_ln(read_keylog(), false);
-    oled_write_ln(read_keylogs(), false);
-    //oled_write_ln(read_mode_icon(keymap_config.swap_lalt_lgui), false);
-    //oled_write_ln(read_host_led_state(), false);
-    //oled_write_ln(read_timelog(), false);
-  } else {
-    oled_write(read_logo(), false);
-  }
-}
-#endif // OLED_DRIVER_ENABLE
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
   if (record->event.pressed) {
@@ -160,4 +151,27 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // set_timelog();
   }
   return true;
+}
+
+
+//
+// Rotate OLED display
+//
+oled_rotation_t oled_init_user(oled_rotation_t rotation) {
+	if (!is_keyboard_master()) return OLED_ROTATION_180;
+    else return rotation;
+}
+
+//
+// OLED display rendering
+//
+void oled_task_user(void) {
+    // if (is_keyboard_master()) {
+    //     // Left side
+    //     render_status();
+    // } else {
+    //     // Right side
+    //     render_anim();
+    // }
+    render_oled();
 }
